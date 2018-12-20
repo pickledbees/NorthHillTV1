@@ -1,0 +1,6 @@
+[
+	{"name" : "MAIN", "time" : 10000},
+	{"name" : "page1.html", "time" : 10000},
+	{"name" : "MAIN", "time" : 5000},
+	{"name" : "page3.html", "time" : 10000}
+]

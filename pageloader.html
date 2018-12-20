@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Page Loader</title>
+	<style type="text/css">
+		body {
+			background-color: black;
+			color: white;
+		}
+	</style>
+	<script>
+		function isRefreshTime() {
+			let hr = (new Date()).getHours();
+			return (hr === 16 || hr === 4) ? true : false;
+		}
+
+		//refreshes bot script page
+		function refresher(page) {
+			return checkInterval => {
+				let win = window.open(page);
+				setInterval(_ => {
+					if (isRefreshTime()) {
+						win.close();
+						win = window.open(page);
+					}
+				}, checkInterval);
+			}
+		}
+
+		refresher("index.html")(1000*60*30);
+		//refresher("SubBots/PollBot2/PollBot2.html")(1000*60*30);
+		
+	</script>
+</head>
+<body>
+	<button id="toggle">Start/Stop</button>
+	<!--Library-->
+	<script src="Scripts/GET_Fs.js"></script>
+	<script>
+		//page cycling object
+		var i = 0;
+		var player = {
+			t : undefined,
+			pages : [{name : "index.html", time : 10000}],
+			current_page : null,
+
+			open_page : () => {
+				if (!RegExp("MAIN").test(player.pages[i]["name"])) {player.current_page = window.open(player.pages[i]["name"])}
+			},
+			close_page : () => {
+				clearTimeout(player.t);
+				if (player.current_page) {
+					player.current_page.close();
+					player.current_page = null;
+				}
+			},
+			flipThrough : () => {
+				player.close_page();
+				player.open_page();
+				player.t = setTimeout(() => {
+					i = (i+1)%player.pages.length;
+					player.flipThrough();
+				}, player.pages[i]["time"]);
+			},
+			update_pages : () => {
+				player.close_page();
+				GET_Fs("/readFile", "?file=page_listing.json")
+				.then((pages_str) => {
+					player.pages = JSON.parse(pages_str);
+					console.log(player.pages);
+				},(err) => {
+					console.log(err);
+				})
+				//.then(player.flipThrough)
+			}
+		}
+
+		player.update_pages();
+
+		//toggle start-stop, toggle is a generator object
+		var toggle = (function*() {
+			while (true) {
+				console.log("Started");
+				yield player.flipThrough();
+				console.log("Stopped");
+				yield player.close_page();
+			}
+		})();
+		document.querySelector("#toggle").addEventListener("click", _ => {toggle.next()});
+		//toggle.next();
+	</script>
+</body>
+</html>

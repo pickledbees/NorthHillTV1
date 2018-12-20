@@ -1,0 +1,16 @@
+{
+  "name": "nhtv_bot_proto1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "DisplayClient.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "pickles",
+  "license": "ISC",
+  "dependencies": {
+    "file-download": "^0.1.2",
+    "node-fetch": "^2.1.2",
+    "swearjar": "^0.2.0"
+  }
+}

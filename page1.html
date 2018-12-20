@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Page1</title>
+	<link rel="stylesheet" type="text/css" href="testStyle.css">
+</head>
+<body>
+
+<h1>Page 1</h1>
+<p id="timer">0</p>
+
+<script type="text/javascript">
+
+var timer = document.getElementById("timer");
+var count = 1;
+
+function getTime() {
+	timer.innerHTML = ++count;
+}
+
+setInterval(getTime, 1000);
+	
+</script>
+
+</body>
+</html>

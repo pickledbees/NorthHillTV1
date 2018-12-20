@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Scroller</title>
+	<meta charset="utf-8">
+	<style type="text/css">
+		body {
+			background-color: black;
+			color: white;
+			font-family: verdana;
+			box-sizing: border-box;
+			overflow: hidden;
+		}
+
+		#title {
+			opacity: 0.5;
+  			text-align: right;
+  			color: white;
+  			position: fixed;
+  			font-size: 500%;
+  			font-weight: bold;
+  			font-style: italic;
+		}
+
+		.column {
+			float: left;
+			width: 48vw;
+			padding: 0.4vw;
+		}
+
+		img {
+			width: inherit;
+			padding: 0.3vw;
+		}
+	</style>
+	<!--libraries-->
+	<script type="text/javascript" src="Scripts/GET_Fs.js"></script>
+	<script type="text/javascript" src="Scripts/auto_scroll.js"></script>
+</head>
+<body>
+
+<h1 id="title">DEFAULT</h1>
+<div class="column" id="left"></div>
+<div class="column" id="right">
+	<div style="height: 30vh; width: inherit" id="title"></div>
+</div>
+
+<script type="text/javascript">
+"use strict";
+
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+var folder = "TesterPhotos"
+var title = "Test"
+//|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+
+
+
+start("TesterPhotos");
+/*
+function will coordinate
+- getting image paths from desired folder
+- rendering the images
+- starting auto scroller
+*/
+function start(image_folder) {
+	console.log("getting...")
+	GET_Fs("/readDir", "?folder=" + image_folder)
+	.then(image_paths_str => {
+		console.log(JSON.parse(image_paths_str))
+		return JSON.parse(image_paths_str)})
+	.then(image_paths_arr => renderImages(image_paths_arr))
+	.then(auto_scroll)
+	.catch(err => console.log(err));
+}
+
+function makeImageBlock(photo_path) {
+	console.log("blocking...");
+	let img = document.createElement("img");
+	img.src = photo_path;
+	return img
+	/*
+	OUTPUT:
+	<img src="photo_path"></img>
+	*/
+}
+
+function makeImageChunk(arr) {
+	console.log("chunking...");
+	let frg = document.createDocumentFragment();
+	arr.forEach(photo_path => {
+		frg.appendChild(makeImageBlock(photo_path));
+	})
+	return frg
+	/*
+	OUTPUT:
+	<img src="photo_path1"></img>
+	<img src="photo_path2"></img>
+	<img src="photo_path3"></img>
+			...
+	*/
+}
+
+//sorts through the array of photo paths and divides them for each column
+function renderImages(arr) {
+	console.log("rendering...");
+	let odd = arr.filter((_el,_index,_arr) => {
+		return (_index%2 === 1) ? true : false;
+	});
+	let even = arr.filter((_el,_index,_arr) => {
+		return (_index%2 === 0) ? true : false;
+	})
+	document.getElementById("left").appendChild(makeImageChunk(odd));
+	document.getElementById("right").appendChild(makeImageChunk(even));
+}			
+</script>
+
+</body>
+</html>

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>PollBot</title>
+	<meta charset="utf-8">
+	<meta http-equiv="refresh" content="86400">
+</head>
+<body>
+<script src="GET_Fs.js"></script>
+<script type="text/javascript">
+"use strict";
+
+var TOKEN			= "",
+	teleAPI			= "https://api.telegram.org/bot",
+	BotAPIurl		= teleAPI + TOKEN,
+	channelId;
+
+getUpdates();	//starts pollMaker
+
+//Gets Latest Updates
+function getUpdates(interval = 0, duration = 0) {
+	interval *= 1000;
+	duration *= 1000;
+	var offset_id = 0;		//tells telegram which update upwards is wanted
+	var TID;
+
+	//starts polling: is a self invoking function
+	(function startPoll() {
+		var url = BotAPIurl + "/getUpdates?offset=" + offset_id;
+		var xhr = new XMLHttpRequest();
+		
+		xhr.open("GET", url);
+		xhr.onload = () => {
+			let updates = JSON.parse(xhr.responseText).result;
+			//console.log(xhr.response);
+			if (updates.length) {										
+				sorter(updates);										//send updates to sorter to sort updates
+				offset_id = updates[updates.length-1].update_id + 1;	//adjusts offset
+			}		
+			TID = setTimeout(startPoll, interval);						//sends another pollMaker based on timeout
+		};
+		xhr.onerror = () => {
+			console.log("Polling failed at: " + new Date());
+			TID = setTimeout(startPoll, 10000);						//repeat pollMaker anyway
+		}
+		xhr.send();
+		//console.log("Fetching latest updates...");
+	})();
+
+	//stops polling if duration is specified
+	if (duration) setTimeout(() => {
+		let d = new Date();
+		clearTimeout(TID);
+		console.log("Polling stopped at: " + d);
+	}, duration);
+}
+
+//sorts through updates
+function sorter(updates) {
+	for (let each in updates) {								//updates recieved may be in array form
+		let msg = updates[each].message;
+		let chl = updates[each].channel_post;
+		let qry = updates[each].callback_query;
+
+		if (qry) {
+			querySorter(qry);
+		}
+		else if (msg && msg.chat.type === "private") {
+			let id 	= msg.chat.id;
+
+			if (msg.text in commands) 	{commands[msg.text](msg, id);}	//check for commands
+			else if (id in waitList) 	{waitList[id](msg,id);}			//ID anticipated, call up correct action in "waitlist"
+			else 						{startHandler(msg, id);}		//calls startHandler as a default response
+		} else {}
+		//GET_Fs("/writeFile","?path="+encodeURIComponent("SubBots/PollBot2/polls.json")+"&content="+encodeURIComponent(JSON.stringify(polls)));
+	}
+}
+
+function querySorter(qry) {
+	if (!polls[qry.from.id]) return;
+	let qryData = qry.data.split("|");
+	switch (qryData[0]) {
+		case "vote":
+			pollMaker.updatePoll(qryData,qry);
+			break;
+		case "results":
+			pollMaker.refreshResults(qryData,qry);
+			break;
+		case "cancel":
+			pollMaker.cancel(qry);
+			break;
+		case "choice":
+			switch (qryData[1]) {
+				case "addOpt":
+					pollMaker.addOptPrompt(qry.from.id);
+					break;
+				case "editOpts":
+					pollMaker.editOptPrompt(qry.from.id);
+					break;
+				case "editOpt":
+					pollMaker.editOpt(qryData[2],qry.from.id);
+					break;
+				case "delOptP":
+					pollMaker.delOptPrompt(qry.from.id);
+					break;
+				case "delOpt":
+					pollMaker.delOpt(qryData[2],qry.from.id);
+					break;
+				case "editQns":
+					pollMaker.editQnsPrompt(qry.from.id);
+					break;
+				case "send":
+					pollMaker.sendPollPrompt(qry.from.id);
+					break;
+			}
+			break;
+	}
+	replyQry({callback_query_id:qry.id});
+}
+
+//function to run on bot start up
+function startHandler(msg,id) {
+	delete waitList[id]				//overides any awaited responses
+	sendMessage({
+		chat_id 	: id,
+		parse_mode 	: "Markdown",
+		text 		: "Hello " + msg.chat.first_name + "!\nWhat would you like to do?\n/new to start new poll\n/results to see poll results" +
+						"\n\n/close anytime to cancel poll making process or close poll"
+	});
+}
+
+//polls object holds pollItems
+var polls = {
+	//example of pollMaker item
+	chat_id : {
+		pollId 	: "1236453464", //chatID of originator
+		qns 	: "What does the fox say",
+		options : ["beep","snog","dunk"],
+		votes 	: {yes: ["sally", "steven", "john"], no: ["grumpycat"]},
+		broadcastMsgId 	: "123", //message ID of sent message to channel
+		channelId 		: "@channelname",
+		previewMsgId	: "53",  //message ID of preview message sent to originator
+		qnsMsgId 		: "54",  //message ID of query message sent to originator
+		optionToChangeIndex : "2"	//storage for index of option in 'options' to edit
+	}
+}
+
+class PollItem {
+	constructor(id) {
+		this.pollId = id;
+		this.qns;
+		this.options = [];
+		this.votes = {};
+		this.broadcastMsgId;
+		this.channelId;
+		//manipulation only available to creator anyway
+		this.previewMsgId;
+		this.qnsMsgId;
+		this.optionToChangeIndex;
+	}
+
+	//generate preview message
+	get preview() {
+		let {qns,options,votes,pollId} = this;
+		let text = `*Poll ID*: ${pollId}\n`;
+		if (qns !== undefined) text += `*Q:* '${qns}'\n`;
+		if (options[0] !== undefined) options.forEach((el,index) => text += `${index+1}. ${el}\n`);
+		text += "\nPeople in each option:\n";
+		options.forEach((el,index) => text += `- ${el}:\n${votes[el].length !== 0 ? votes[el].join(", ")+"\n" : ""}`);
+		text += "\nStats:\n";
+		let totalVotes = 0;
+		options.forEach((el,index) => {
+			text += `- ${el}: ${votes[el].length} votes\n`;
+			totalVotes += votes[el].length;
+		});
+		text += `Total votes: ${totalVotes}`;
+		return text;
+	}
+
+	//generate pollMaker message sent to group/channel
+	get stat() {
+		let {qns,options,votes,pollId} = this;
+		let text = "";
+		if (qns !== undefined) text += `*Q:* '${qns}'\n`;
+		//if (options[0] !== undefined) options.forEach((el,index) => text += `${index+1}. ${el}\n`);
+		let totalVotes = 0;
+		options.forEach((el,index) => totalVotes += votes[el].length);
+		text += `\nTotal votes: ${totalVotes}`;
+		return text;
+	}
+}
+
+var pollMaker = {
+	askId : (msg,id) => {
+		sendMessage({
+			chat_id	: id,
+			text 	: "Please send me your poll ID"
+		});
+		waitList[id] = pollMaker.giveResults;
+	},
+
+	giveResults : (msg,id) => {
+		if (polls[msg.text]) {
+			sendMessage({
+				chat_id		: id,
+				parse_mode	: "Markdown",
+				text 		: polls[msg.text].preview
+			})
+		} else {
+			sendMessage({
+				chat_id	: id,
+				text 	: "Sorry, there is no poll with that ID"
+			})
+		}
+		delete waitList[id];
+	},
+
+	refreshResults : (qryData,qry) => {
+		sendCurPoll(qryData[2],_=>{},false,qry.from.id,qry.message.message_id);
+	},
+
+	closePoll : (msg,id) => {
+		delete waitList[id];
+		let poll = polls[id];
+		if (poll) {
+			editMessageText({
+				chat_id 	: id,
+				message_id 	: poll.previewMsgId,
+				parse_mode	: "Markdown",
+				text 		: poll.preview
+			});
+			editMessageText({
+				chat_id		: id,
+				message_id	: poll.qnsMsgId,
+				parse_mode	: "Markdown",
+				text 		: "*The above poll is closed*"
+			});
+			/*
+			sendMessage({
+				chat_id 	: id,
+				parse_mode	: "Markdown",
+				text 		: "*Poll has been closed*"
+			});
+			*/
+			if (poll.broadcastMsgId) {
+				editMessageText({
+					chat_id 	: poll.channelId,
+					message_id	: poll.broadcastMsgId,
+					parse_mode 	: "Markdown",
+					text 		: poll.stat+"\n*Poll has been closed*"
+				})
+			}
+		}
+		delete polls[id];
+	},
+
+	createPoll : (msg,id) => {
+		pollMaker.closePoll(null,id);
+		let poll = polls[id] = new PollItem(id);
+		sendMessage({
+			chat_id 	: id,
+			text 		: "Send me the poll question:",
+		}, qnsMsg => {
+			poll.qnsMsgId = qnsMsg.message_id;
+		});
+		waitList[id] = pollMaker.confirmQns;
+	},
+
+	confirmQns : (msg,id) => {
+		polls[id].qns = msg.text;
+		pollMaker.askforOptions(msg,id);
+	},
+
+	askforOptions : (msg,id) => {
+		sendMessage({
+			chat_id	 	: id,
+			//message_id	: polls[id].qnsMsgId,
+			text 		: "Send me option " + String((polls[id].options[0] === undefined) ? 1 : polls[id].options.length+1) +"\nWhen done, send me: /done",
+		})
+		waitList[id] = pollMaker.logOptions;
+	},
+
+	logOptions : (msg,id) => {
+		delete waitList[id]
+		if (msg.text === "/done") {
+			pollMaker.done(msg,id)
+		} else {
+			let poll = polls[id];
+			poll.options.push(msg.text);
+			poll["votes"][msg.text] = [];
+			pollMaker.askforOptions(msg,id);
+		}
+	},
+
+	done : (msg,id) => {
+		let poll = polls[id];
+		sendCurPoll(id, previewMsg => {
+			poll.previewMsgId = previewMsg.message_id;
+			editToMainWindow(id,qnsMsg => poll.qnsMsgId = qnsMsg.message_id,true);
+		});
+	},
+
+	editQnsPrompt : (id) => {
+		editMessageText({
+			chat_id	 	: id,
+			message_id	: polls[id].qnsMsgId,
+			text 		: "Send me the new question",
+			reply_markup: {
+				inline_keyboard : [[{text:"Cancel",callback_data:"cancel"}]]
+			}
+		})
+		waitList[id] = pollMaker.editQns;
+	},
+
+	editQns : (msg,id) => {
+		delete waitList[id];
+		polls[id].qns = msg.text;
+		sendCurPoll(id,_=>editToMainWindow(id),false);
+	},
+
+	editOptPrompt : (id) => {
+		let arr = [];
+		let poll = polls[id];
+		let len = poll.options.length;
+		for (let i = 1; i <= len; i++) {
+			arr.push({text:String(i), callback_data:"choice|editOpt|"+i});
+		}
+		editMessageText({
+			chat_id		: id,
+			message_id 	: poll.qnsMsgId,
+			text 		: "Which Option?",
+			reply_markup: {
+				inline_keyboard : [
+					arr,
+					[{text:"Cancel",callback_data:"cancel"}]
+				]
+			}
+		});
+	},
+
+	editOpt : (qryData,id) => {
+		let poll = polls[id];
+		editMessageText({
+			chat_id		: id,
+			message_id	: poll.qnsMsgId,
+			text 		: "Send me the new option "+qryData,
+			reply_markup: {
+				inline_keyboard : [[{text:"Cancel",callback_data:"cancel"}]]
+			}
+		});
+		poll.optionToChangeIndex = qryData-1;
+		waitList[id] = pollMaker.logNewOpt;
+	},
+
+	addOptPrompt : (id) => {
+		editMessageText({
+			chat_id 	: id,
+			message_id	: polls[id].qnsMsgId,
+			text 		: "Send me the new option",
+			reply_markup: {
+				inline_keyboard : [[{text:"Cancel",callback_data:"cancel"}]]
+			}
+		})
+		waitList[id] = pollMaker.addNewOpt;
+	},
+
+	addNewOpt : (msg,id) => {
+		delete waitList[id];
+		polls[id].options.push(msg.text);
+		polls[id]["votes"][msg.text] = [];
+		sendCurPoll(id,_=>{},false);
+		editToMainWindow(id);
+	},
+
+	logNewOpt : (msg,id) => {
+		let poll = polls[id];
+		delete waitList[id];
+		let index = poll.optionToChangeIndex;
+		delete poll["votes"][poll.options[index]];
+		poll["votes"][msg.text] = [];
+		poll.options[index] = msg.text;
+		sendCurPoll(id,_=>{},false);
+		editToMainWindow(id);
+	},
+
+	delOptPrompt : (id) => {
+		let arr = [];
+		let poll = polls[id];
+		let len = poll.options.length;
+		for (let i = 1; i <= len; i++) {
+			arr.push({text:String(i), callback_data:"choice|delOpt|"+i});
+		}
+		editMessageText({
+			chat_id		: id,
+			message_id 	: poll.qnsMsgId,
+			text 		: "Which Option?",
+			reply_markup: {
+				inline_keyboard : [
+					arr,
+					[{text:"Cancel",callback_data:"cancel"}]
+				]
+			}
+		})
+	},
+
+	delOpt : (qryData,id) => {
+		let poll = polls[id];
+		delete poll["votes"][poll.options[qryData-1]];
+		poll.options.splice(qryData-1,1);
+		sendCurPoll(id,_=>{},false);
+		editToMainWindow(id);
+	},
+
+	sendPollPrompt : (id) => {
+		editMessageText({
+			chat_id 	: id,
+			message_id 	: polls[id].qnsMsgId,
+			parse_mode 	: "Markdown",
+			text 		: "Send me the username of the channel\n*Format:* @channelname",
+			reply_markup: {
+				inline_keyboard : [[{text:"Cancel",callback_data:"cancel"}]]
+			}
+		})
+		waitList[id] = pollMaker.sendPoll;
+	},
+
+	sendPoll : (msg,id) => {
+		let poll = polls[id];
+		delete waitList[id];
+		let optionArr = [];
+		poll.channelId = msg.text;
+		poll.options.forEach((el,index) => optionArr.push([{text: el, callback_data: "vote|"+id+"|"+el}]));
+		editMessageText({
+			chat_id 	: id,
+			message_id 	: poll.qnsMsgId,
+			text 		: "...",
+		})
+		sendMessage({
+			chat_id 	: msg.text,
+			parse_mode 	: "Markdown",
+			text 		: poll.stat,
+			reply_markup: {
+				inline_keyboard : optionArr
+			}
+		}, broadcastMsg => {
+			if (broadcastMsg) {
+				editMessageText({
+					chat_id 	: id,
+					message_id	: poll.qnsMsgId,
+					text 		: "Poll sent to " + msg.text
+				});
+				poll.broadcastMsgId = broadcastMsg.message_id;
+			} else {
+				editMessageText({
+					chat_id 	: id,
+					message_id	: poll.qnsMsgId,
+					parse_mode	: "Markdown",
+					text 		: "That's not a valid channel name, try again\n*Format:* @channelname",
+					reply_markup: {
+						inline_keyboard : [[{text:"Cancel",callback_data:"cancel"}]]
+					}
+				});
+				waitList[id] = pollMaker.sendPoll;
+			}
+		});
+	},
+
+	updatePoll : (qryData,qry) => {
+		let user = qry.from.first_name;
+		let choice = qryData[2];
+		let {votes,options} = polls[qryData[1]];
+		//search for existence of user and remove it
+		for (let option in votes) {
+			let arr = votes[option];
+			if (arr.includes(user)) {
+				arr.splice(arr.indexOf(user),1);
+				break;
+			}
+		}
+
+		//edit choice
+		let correctVotesArr = votes[choice];
+		votes[choice].push(user);
+
+		let optionArr = [];
+		options.forEach((el,index) => optionArr.push([{text: el, callback_data: "vote|"+qryData[1]+"|"+el}]));
+		editMessageText({
+			chat_id 	: qry.message.chat.id,
+			message_id 	: qry.message.message_id,
+			parse_mode 	: "Markdown",
+			text 		: polls[qryData[1]].stat,
+			reply_markup: {
+				inline_keyboard : optionArr
+			}
+		});
+		//sendCurPoll(qryData[1],_=>{},false);
+	},
+
+	cancel : (qry) => {
+		delete waitList[qry.message.chat.id];
+		editToMainWindow(qry.message.chat.id);
+	},
+
+	doNothing : _ => {
+	}
+}
+
+function editToMainWindow(id,postCallBack = _=>{},_new = false) {
+	let options = {
+		chat_id		: id,
+		message_id  : polls[id].qnsMsgId,
+		text 		: "options:",
+		reply_markup: {
+			inline_keyboard : [
+				[{text:"Edit Question",callback_data:"choice|editQns"}],
+				[{text:"Add Option",callback_data:"choice|addOpt"}],
+				[{text:"Send the poll",callback_data:"choice|send"}]
+			]
+		}
+	}
+	if (polls[id].options.length) {
+		options.reply_markup.inline_keyboard[1].push({text:"Delete Option", callback_data:"choice|delOptP"});
+		options.reply_markup.inline_keyboard[0].push({text:"Edit Options",callback_data:"choice|editOpts"});
+	}
+	waitList[id] = pollMaker.doNothing;
+	if (_new) return sendMessage(options,postCallBack);
+	editMessageText(options,postCallBack);
+}
+
+function sendCurPoll(id,postCallback = _ => {},_new = true, chatId, msgId, toggle) {
+	if (!chatId) chatId = id;
+	if (!msgId) msgId = polls[id].previewMsgId;
+	let options = {
+		chat_id 	: chatId,
+		parse_mode	: "Markdown",
+		message_id  : msgId,
+		text 		: "Your Current Poll:\n" + polls[id].preview
+	}
+	if (!toggle) options["reply_markup"] = {
+			inline_keyboard : [[{text:"Refresh Results", callback_data: "results|"+chatId+"|"+id}]]
+		}
+	if (_new) return sendMessage(options,postCallback);
+	editMessageText(options,postCallback);
+}
+
+var commands = {
+	"/start" 		: startHandler,
+	"/results"		: pollMaker.askId,
+	"/new"			: pollMaker.createPoll,
+	"/close"		: pollMaker.closePoll
+}
+
+var waitList = {
+	chat_id : "next action"
+}
+
+//initialise polls and waitList object
+GET_Fs("/readFile", "?file=" + encodeURIComponent("SubBots/PollBot2/waitList.json"))
+.then(waitListStr => {if (waitListStr) waitList = JSON.parse(waitListStr)});
+GET_Fs("/readFile", "?file=" + encodeURIComponent("SubBots/PollBot2/polls.json"))
+.then(pollsStr => {if (pollsStr) polls = JSON.parse(pollsStr)});
+
+function post(method) {
+	return (options, postCallback = _ => {}) => {
+		var qryString = [];
+		for (let option in options) {
+			let param = options[option];
+			if (option === "text") param = encodeURIComponent(param);
+			if (param instanceof Object) param = JSON.stringify(param);
+			qryString.push(`${option}=${param}`);
+		}
+		var url = BotAPIurl + method + "?" + qryString.join("&");
+		//console.log(url)
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", url);
+		xhr.onload = _ => {
+			//console.log(`${url} sent!`)
+			//console.log(`${options.text} sent!`);
+			postCallback(JSON.parse(xhr.responseText).result);
+		};
+		xhr.send();
+	}
+}
+
+var replyQry = post("/answerCallbackQuery");
+var sendMessage = post("/sendMessage");
+var editMessageText = post("/editMessageText");
+
+</script>
+</body>
+</html>

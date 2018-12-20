@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+	<link rel="stylesheet" type="text/css" href="./Misc_assets/mainstyle.css">
+	<title>NHTV Screen</title>
+</head>
+<body>
+
+	<div id="left-col">
+		<iframe class="dakboard" src="https://dakboard.com/app?p=750348c81ab252ad50f8217a465579fb"></iframe>
+		<img src="./Misc_assets/qrcode.png">
+		<p>For suggestions and feedback, please scan the QR code</p>
+	</div>
+
+	<div id="right-col">
+		<div id="heading">
+			<h1>RENAISSANCE ENGINEERING PROGRAMME</h1><img src="./Misc_assets/reclublogo.png">
+		</div>
+
+		<div  id="posters" class="carousel slide" data-ride="carousel" data-interval="9000">
+	 		<div class="carousel-inner" id="poster_carousel">
+	    		<div class="carousel-item active"><img src="Posters/6.png"></div>
+	    		<div class="carousel-item"><img src="Posters/Motivation.JPG"></div>
+	  		</div>
+	  	</div>
+
+		<div id="textFeedBoxWrapper">
+			<div>
+				<div id="textFeedBox">
+					<p><b>TV_Bot</b>: Hello! Send me some messages on telegram to display them here! :D</p>
+				</div>
+			</div>
+		</div>
+
+		<div id="imageFeedBoxWrapper">
+			<div>
+				<div id="teleBotQR">
+					<img src="./Misc_assets/teleQR.png">
+					<div>^Scan here^ to start uploading! (Telegram Bot)</div>
+				</div>
+				<div id="imageFeedBox">
+					<div style="width: 30vw; padding: 100px 0 0 100px; text-align: center;">
+					<h1>&#x3c;Image Feed&#x3e;</h1>
+					<p>Telegram me some pictures :D</p>	
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="announcements">
+			<div>
+				<h3><b>Announcements</b></h3>
+				<div><p>Any suggestions for this display?</br>Scan the QR code and drop us some feedback!</p></div>
+				<div><p>Any suggestions for this display?</br>Scan the QR code and drop us some feedback!</p></div>
+				<div><p>Any suggestions for this display?</br>Scan the QR code and drop us some feedback!</p></div>
+			</div>
+		</div>
+		
+		<div id="avatars" class="carousel slide" data-ride="carousel" data-interval="5000">
+	 		<div class="carousel-inner">
+	    		<div class="carousel-item active"><img src="Avatars/1a.png"></div>
+	    		<div class="carousel-item"><img src="Avatars/2a.png"></div>
+	    		<div class="carousel-item"><img src="Avatars/3a.png"></div>
+	  		</div>
+	  	</div>
+	</div>
+	
+	<script src="Scripts/Rotator.js"></script>
+	<script type="text/javascript">
+		var ancR = new Rotator(document.querySelector("#announcements div"));
+		ancR.rotate(20000);
+	</script>
+	<script src="Scripts/GET_Fs.js"></script>
+	<script src="DisplayClient.js"></script>
+</body>
+</html>

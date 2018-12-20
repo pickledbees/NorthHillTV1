@@ -1,0 +1,217 @@
+body {
+	width: 100vw;
+	height: 100vh;
+	padding: 0px;
+	margin: 0px;
+	border: none;
+	color: white;
+	overflow: hidden;
+	font-size: 120%;
+}
+
+.inline_block {
+	display: inline-block;
+}
+
+#left-col {
+	box-sizing: border-box;
+	position: relative;
+	display: inline-block;
+	width: 35vw;
+	height: 100vh;
+	float: left;
+	background-color: #262626;
+}
+
+.dakboard {
+	box-sizing: border-box;
+	width: inherit;
+	height: 90%;
+	border: none;
+	background-color: black;
+	padding-bottom: 5px;
+	float: left;
+}
+
+#left-col img {
+	box-sizing: border-box;
+	margin: 0px;
+	height: 10%;
+	float: left;
+	padding-right: 5px;
+	background-color: black;
+}
+
+#left-col p {
+	box-sizing: border-box;
+	display: block;
+	height: 10%;
+	width: 70%;
+	margin: 0px;
+	padding: 15px;
+	float: left;
+}
+
+#right-col {
+	box-sizing: border-box;
+	position: relative;
+	display: inline-block;
+	width: 65vw;
+	height: 100vh;
+	padding-left: 5px;
+	background-color: black;
+	float: left;
+}
+
+#heading {
+	height: 15vh;
+	width: 100%;
+	background-color: #262626;
+	position: absolute;
+}
+
+#heading h1 {
+	box-sizing: border-box;
+	position: absolute;
+	display: block;
+	width: 55vw;
+	margin: 0px;
+	padding: 15px;
+	font-size: 2.7vw;
+	font-weight: bold;
+}
+
+#heading img {
+	box-sizing: border-box;
+	position: absolute;
+	right: 0px;
+	height: inherit;
+	background-color: black;
+	padding: 0 5px;
+}
+
+#posters {
+	box-sizing: border-box;
+	padding: 5px 10px 0 0;
+	background-color: black;
+	position: absolute;
+	top: 15vh;
+	height: 55vh;
+	width: 22vw;
+}
+
+.carousel-inner, .carousel-inner div {
+	height: 100%;
+	width: 100%;
+	line-height: 55vh;
+}
+
+.carousel-inner img {
+	width: 100%;
+	max-height: 100%;
+	vertical-align: center;
+}
+
+#textFeedBoxWrapper {
+	box-sizing: border-box;
+	background-color: black;
+	position: absolute;
+	padding-top: 5px;
+	top: 15vh;
+	left: 22vw;
+	width: 43vw;
+	height: 22vh;
+}
+
+#textFeedBoxWrapper div {
+	box-sizing: border-box;
+	padding: 10px;
+	height: 100%;
+	width: 100%;
+	background-color: #262626;
+}
+
+#textFeedBox {
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+}
+
+#imageFeedBoxWrapper {
+	box-sizing: border-box;
+	background-color: black;
+	position: absolute;
+	padding-top: 5px;
+	left: 22vw;
+	top: 37vh;
+	height: 33vh;
+	width: 100vw;
+}
+
+#imageFeedBoxWrapper div {
+	background-color: #262626;
+	height: 100%;
+	width: 100vw;
+}
+
+#teleBotQR {
+	position: absolute;
+	width: 5.5% !important;
+	background-color: #262626;
+	padding: 5px;
+}
+
+#teleBotQR img {
+	border: 5px solid orange;
+	width: 100%;
+	margin-bottom: 5px; 
+}
+
+#teleBotQR div {
+	width: 100%;
+	text-align: center;
+	font-size: 0.75vw;
+}
+
+#imageFeedBox {
+	padding-left: 6%;
+	height: 100%;
+}
+
+#announcements {
+	box-sizing: border-box;
+	position: absolute;
+	padding-top: 5px;
+	height: 30vh;
+	width: 47vw;
+	top: 70vh;
+	background-color: black;
+}
+
+#announcements div {
+	padding: 15px;
+	background-color: #381a1a;
+	height: 100%;
+	width: 100%;
+}
+
+#announcements div div {
+	padding: 0;
+}
+
+#avatars {
+	box-sizing: border-box;
+	position: absolute;
+	padding: 5px 0 0 5px;
+	left: 47vw;
+	top: 70vh;
+	width: 18vw;
+	height: 30vh;	
+	background-color: black;
+}
+
+#avatars .carousel-inner, #avatars .carousel-inner div, #avatars .carousel-inner img {
+	vertical-align: top;
+	height: auto;
+	width: 100%;
+}
